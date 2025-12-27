@@ -125,6 +125,7 @@ export const ragLogger = new Logger('RAG');
 export const pineconeLogger = new Logger('Pinecone');
 export const openaiLogger = new Logger('OpenAI');
 export const indexLogger = new Logger('Indexer');
+export const chatSessionLogger = new Logger('ChatSession');
 
 // Export factory function for creating custom loggers
 export function createLogger(module: string): Logger {

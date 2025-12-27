@@ -49,6 +49,7 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
     const response = await client.embeddings.create({
       model: EMBEDDING_MODEL,
       input: texts,
+      dimensions: 384, // Match Pinecone index dimension
     });
     
     const duration = Date.now() - startTime;

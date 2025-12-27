@@ -1,0 +1,63 @@
+SAMPLE LEGAL AGREEMENT
+
+This Agreement is entered into on December 27, 2025, between Party A (hereinafter referred to as "Client") and Party B (hereinafter referred to as "Service Provider").
+
+WHEREAS, the Client wishes to engage the Service Provider for legal consultation services;
+
+WHEREAS, the Service Provider possesses the necessary qualifications and expertise to provide such services;
+
+NOW, THEREFORE, in consideration of the mutual covenants and agreements herein contained, the parties agree as follows:
+
+1. SCOPE OF SERVICES
+The Service Provider agrees to provide legal consultation services to the Client, including but not limited to:
+- Legal advice on business matters
+- Document review and drafting
+- Representation in negotiations
+- Compliance advisory services
+
+2. TERM AND TERMINATION
+This Agreement shall commence on the date first written above and shall continue for a period of one (1) year unless earlier terminated in accordance with the provisions herein.
+
+Either party may terminate this Agreement upon thirty (30) days written notice to the other party.
+
+3. COMPENSATION
+The Client agrees to pay the Service Provider a retainer fee of ₹100,000 (Indian Rupees One Hundred Thousand only) per month for the services rendered under this Agreement.
+
+Additional services beyond the scope defined in Section 1 shall be billed separately at the rate of ₹5,000 per hour.
+
+4. CONFIDENTIALITY
+The Service Provider agrees to maintain strict confidentiality regarding all information received from the Client in the course of providing services under this Agreement.
+
+This obligation shall survive the termination of this Agreement and shall continue indefinitely.
+
+5. GOVERNING LAW
+This Agreement shall be governed by and construed in accordance with the laws of India.
+
+Any disputes arising out of or in connection with this Agreement shall be subject to the exclusive jurisdiction of the courts in Mumbai, India.
+
+6. INDEMNIFICATION
+The Service Provider agrees to indemnify and hold harmless the Client from any claims, damages, or liabilities arising from the Service Provider's negligence or misconduct in performing services under this Agreement.
+
+7. AMENDMENTS
+No amendment or modification of this Agreement shall be valid unless made in writing and signed by both parties.
+
+8. ENTIRE AGREEMENT
+This Agreement constitutes the entire agreement between the parties and supersedes all prior negotiations, representations, and agreements, whether oral or written.
+
+IN WITNESS WHEREOF, the parties hereto have executed this Agreement as of the date first written above.
+
+_______________________          _______________________
+Party A (Client)                 Party B (Service Provider)
+
+Date: December 27, 2025          Date: December 27, 2025
+
+Key Legal Provisions:
+- Contract duration: 1 year
+- Monthly retainer: ₹100,000
+- Hourly rate for additional work: ₹5,000
+- Termination notice: 30 days
+- Jurisdiction: Mumbai, India
+- Governing law: Indian law
+- Confidentiality: Perpetual
+
+This is a sample document for testing purposes only and does not constitute a legally binding agreement.

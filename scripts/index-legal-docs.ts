@@ -129,6 +129,7 @@ async function chunkLegalSections(sections: LegalSection[], chunkSize: number = 
           section: section.section,
           title: section.title,
           source: "legal_dataset",
+          type: "legal",
         },
       });
     } else {
@@ -147,6 +148,7 @@ async function chunkLegalSections(sections: LegalSection[], chunkSize: number = 
               section: section.section,
               title: section.title,
               source: "legal_dataset",
+              type: "legal",
               chunkIndex,
             },
           });
@@ -167,6 +169,7 @@ async function chunkLegalSections(sections: LegalSection[], chunkSize: number = 
             section: section.section,
             title: section.title,
             source: "legal_dataset",
+            type: "legal",
             chunkIndex,
           },
         });

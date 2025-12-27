@@ -3,9 +3,12 @@
  */
 
 type EnvironmentConfig = {
-  openai: {
+  gemini: {
     apiKey: string;
     model: string;
+  };
+  huggingface: {
+    apiKey?: string;  // Optional - works without key but with rate limits
     embeddingModel: string;
   };
   pinecone: {
@@ -36,20 +39,28 @@ function validateEnvVar(name: string, value: string | undefined, required: boole
 
 function getConfig(): EnvironmentConfig {
   // Validate critical environment variables
-  const openaiApiKey = validateEnvVar('OPENAI_API_KEY', process.env.OPENAI_API_KEY);
-  const pineconeApiKey = validateEnvVar('PINECONE_API_KEY', process.env.PINECONE_API_KEY);
-  const pineconeIndex = validateEnvVar('PINECONE_INDEX', process.env.PINECONE_INDEX);
+  const geminiApiKey = validateEnvVar('GEMINI_API_KEY', process.env.GEMINI_API_KEY);
+  
+  // Pinecone is REQUIRED for vector-based retrieval
+  const pineconeApiKey = validateEnvVar('PINECONE_API_KEY', process.env.PINECONE_API_KEY, true);
+  const pineconeIndex = validateEnvVar('PINECONE_INDEX', process.env.PINECONE_INDEX, true);
+  
+  // HuggingFace API key is optional - it works without it but with rate limits
+  const huggingfaceApiKey = process.env.HUGGINGFACE_API_KEY;
 
   // Warn about exposed API keys
-  if (openaiApiKey.startsWith('sk-') && openaiApiKey.length > 20) {
-    console.warn('[SECURITY WARNING] OpenAI API key appears to be hardcoded. Please use environment variables.');
+  if (geminiApiKey.startsWith('AI') && geminiApiKey.length > 20) {
+    console.warn('[SECURITY WARNING] Gemini API key appears to be hardcoded. Please use environment variables.');
   }
 
   return {
-    openai: {
-      apiKey: openaiApiKey,
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-      embeddingModel: process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small',
+    gemini: {
+      apiKey: geminiApiKey,
+      model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+    },
+    huggingface: {
+      apiKey: huggingfaceApiKey,
+      embeddingModel: process.env.HF_EMBEDDING_MODEL || 'sentence-transformers/all-MiniLM-L6-v2',
     },
     pinecone: {
       apiKey: pineconeApiKey,
@@ -80,26 +91,30 @@ export function validateEnvironment(): { valid: boolean; errors: string[] } {
   try {
     const config = getEnvConfig();
     
-    // Validate OpenAI configuration
-    if (!config.openai.apiKey) {
-      errors.push('OPENAI_API_KEY is not configured');
-    } else if (!config.openai.apiKey.startsWith('sk-')) {
-      errors.push('OPENAI_API_KEY appears to be invalid (should start with "sk-")');
+    // Validate Gemini configuration
+    if (!config.gemini.apiKey) {
+      errors.push('GEMINI_API_KEY is not configured');
+    } else if (!config.gemini.apiKey.startsWith('AI')) {
+      errors.push('GEMINI_API_KEY appears to be invalid (should start with "AI")');
+    }
+    
+    // HuggingFace API key is optional but recommend having one
+    if (!config.huggingface.apiKey) {
+      console.warn('[Config] No HUGGINGFACE_API_KEY found. Will use free tier with rate limits.');
     }
 
-    // Validate Pinecone configuration
+    // Pinecone is optional - we can use MongoDB-only retrieval
     if (!config.pinecone.apiKey) {
-      errors.push('PINECONE_API_KEY is not configured');
+      console.warn('[Config] PINECONE_API_KEY not configured. Using MongoDB-only retrieval.');
     }
     
     if (!config.pinecone.index) {
-      errors.push('PINECONE_INDEX is not configured');
+      console.warn('[Config] PINECONE_INDEX not configured. Using MongoDB-only retrieval.');
     }
 
-    // Additional model validation
-    const validModels = ['gpt-4o-mini', 'gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo'];
-    if (!validModels.includes(config.openai.model)) {
-      console.warn(`[Config] Using non-standard OpenAI model: ${config.openai.model}`);
+    // Validate Gemini model
+    if (!config.gemini.model) {
+      errors.push('GEMINI_MODEL is not configured');
     }
 
   } catch (error) {

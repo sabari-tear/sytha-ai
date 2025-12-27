@@ -12,6 +12,8 @@ export default function UploadPage() {
   const [checking, setChecking] = useState(true);
   const [vectorCount, setVectorCount] = useState(0);
   const [progress, setProgress] = useState("");
+  const [indexingSteps, setIndexingSteps] = useState<Array<{step: string, status: 'pending' | 'processing' | 'completed' | 'error', detail?: string}>>([]);
+  const [currentStep, setCurrentStep] = useState("");
 
   useEffect(() => {
     checkPineconeStatus();
@@ -33,8 +35,27 @@ export default function UploadPage() {
   const handleIndexDocuments = async () => {
     setIsUploading(true);
     setError(null);
-    setProgress("Starting indexing process...");
     setStatus(null);
+    setCurrentStep("Initializing...");
+    
+    // Initialize progress steps
+    const steps = [
+      { step: "Validating environment", status: 'pending' as const, detail: "" },
+      { step: "Loading documents from dataset folder", status: 'pending' as const, detail: "" },
+      { step: "Chunking documents", status: 'pending' as const, detail: "" },
+      { step: "Generating embeddings and indexing", status: 'pending' as const, detail: "" },
+      { step: "Verifying index integrity", status: 'pending' as const, detail: "" }
+    ];
+    setIndexingSteps(steps);
+
+    // Update step status helper
+    const updateStep = (index: number, status: 'processing' | 'completed' | 'error', detail?: string) => {
+      setIndexingSteps(prev => {
+        const newSteps = [...prev];
+        newSteps[index] = { ...newSteps[index], status, detail };
+        return newSteps;
+      });
+    };
 
     try {
       const response = await fetch("/api/pinecone/index", {
@@ -46,36 +67,110 @@ export default function UploadPage() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to index documents");
+        throw new Error("Failed to start indexing");
       }
 
-      const result = await response.json();
-      setStatus(`Successfully indexed ${result.totalIndexed} documents!`);
-      setProgress("");
-      
-      // Refresh status and redirect after success
-      await checkPineconeStatus();
-      setTimeout(() => {
-        router.push("/");
-      }, 2000);
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error("No response reader available");
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = JSON.parse(line.slice(6));
+            
+            if (data.step === 'validate') {
+              if (data.status === 'processing') updateStep(0, 'processing');
+              if (data.status === 'completed') updateStep(0, 'completed', '✓ Environment validated');
+              if (data.status === 'error') throw new Error(data.message);
+              setCurrentStep(data.message);
+            } else if (data.step === 'load') {
+              if (data.status === 'processing') updateStep(1, 'processing');
+              if (data.status === 'completed') updateStep(1, 'completed', `✓ ${data.message}`);
+              if (data.status === 'error') throw new Error(data.message);
+              setCurrentStep(data.message);
+            } else if (data.step === 'chunk') {
+              if (data.status === 'processing') updateStep(2, 'processing');
+              if (data.status === 'completed') updateStep(2, 'completed', `✓ ${data.message}`);
+              setCurrentStep(data.message);
+            } else if (data.step === 'index') {
+              if (data.status === 'processing') {
+                updateStep(3, 'processing', data.percent ? `${data.percent}% complete` : '');
+                setCurrentStep(data.message);
+              }
+              if (data.status === 'completed') updateStep(3, 'completed', `✓ ${data.message}`);
+            } else if (data.step === 'verify') {
+              if (data.status === 'processing') updateStep(4, 'processing');
+              if (data.status === 'completed') {
+                updateStep(4, 'completed', `✓ Verified ${data.vectorCount} vectors`);
+                setStatus(`Successfully indexed ${data.totalIndexed} chunks from ${data.totalDocuments} documents!`);
+              }
+              setCurrentStep(data.message);
+            } else if (data.step === 'complete') {
+              setCurrentStep("");
+              setProgress("");
+              await checkPineconeStatus();
+              setTimeout(() => router.push("/"), 2000);
+            } else if (data.step === 'error') {
+              throw new Error(data.message);
+            }
+          }
+        }
+      }
     } catch (err) {
+      setIndexingSteps(prev => prev.map(step => 
+        step.status === 'processing' ? { ...step, status: 'error' as const, detail: '✗ Failed' } : step
+      ));
       setError(err instanceof Error ? err.message : "Failed to index documents");
       setProgress("");
+      setCurrentStep("");
     } finally {
       setIsUploading(false);
+      if (!error) {
+        setTimeout(() => setIndexingSteps([]), 3000);
+      }
     }
   };
 
   const handleClearAndIndex = async () => {
-    if (!confirm("This will delete all existing vectors and re-index. Are you sure?")) {
+    if (!confirm("This will re-index all documents from the dataset folder, replacing existing vectors. Are you sure?")) {
       return;
     }
 
     setIsUploading(true);
     setError(null);
-    setProgress("Clearing existing vectors and re-indexing...");
     setStatus(null);
+    setCurrentStep("Preparing to re-index...");
+    
+    // Initialize progress steps for re-indexing
+    const steps = [
+      { step: "Preparing index for re-indexing", status: 'pending' as const, detail: "" },
+      { step: "Validating environment", status: 'pending' as const, detail: "" },
+      { step: "Loading documents from dataset folder", status: 'pending' as const, detail: "" },
+      { step: "Chunking documents", status: 'pending' as const, detail: "" },
+      { step: "Generating embeddings and indexing", status: 'pending' as const, detail: "" },
+      { step: "Verifying index integrity", status: 'pending' as const, detail: "" }
+    ];
+    setIndexingSteps(steps);
+    
+    const updateStep = (index: number, status: 'processing' | 'completed' | 'error', detail?: string) => {
+      setIndexingSteps(prev => {
+        const newSteps = [...prev];
+        newSteps[index] = { ...newSteps[index], status, detail };
+        return newSteps;
+      });
+    };
+    
+    setProgress("Clearing existing vectors and re-indexing...");
 
     try {
       const response = await fetch("/api/pinecone/index", {
@@ -87,24 +182,81 @@ export default function UploadPage() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to clear and index");
+        throw new Error("Failed to start re-indexing");
       }
 
-      const result = await response.json();
-      setStatus(`Successfully re-indexed ${result.totalIndexed} documents!`);
-      setProgress("");
-      
-      // Refresh status and redirect
-      await checkPineconeStatus();
-      setTimeout(() => {
-        router.push("/");
-      }, 2000);
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error("No response reader available");
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = JSON.parse(line.slice(6));
+            
+            if (data.step === 'clear') {
+              if (data.status === 'processing') updateStep(0, 'processing');
+              if (data.status === 'completed') updateStep(0, 'completed', '✓ Ready to re-index');
+              setCurrentStep(data.message);
+            } else if (data.step === 'validate') {
+              if (data.status === 'processing') updateStep(1, 'processing');
+              if (data.status === 'completed') updateStep(1, 'completed', '✓ Environment validated');
+              if (data.status === 'error') throw new Error(data.message);
+              setCurrentStep(data.message);
+            } else if (data.step === 'load') {
+              if (data.status === 'processing') updateStep(2, 'processing');
+              if (data.status === 'completed') updateStep(2, 'completed', `✓ ${data.message}`);
+              if (data.status === 'error') throw new Error(data.message);
+              setCurrentStep(data.message);
+            } else if (data.step === 'chunk') {
+              if (data.status === 'processing') updateStep(3, 'processing');
+              if (data.status === 'completed') updateStep(3, 'completed', `✓ ${data.message}`);
+              setCurrentStep(data.message);
+            } else if (data.step === 'index') {
+              if (data.status === 'processing') {
+                updateStep(4, 'processing', data.percent ? `${data.percent}% complete` : '');
+                setCurrentStep(data.message);
+              }
+              if (data.status === 'completed') updateStep(4, 'completed', `✓ ${data.message}`);
+            } else if (data.step === 'verify') {
+              if (data.status === 'processing') updateStep(5, 'processing');
+              if (data.status === 'completed') {
+                updateStep(5, 'completed', `✓ Verified ${data.vectorCount} vectors`);
+                setStatus(`Successfully re-indexed ${data.totalIndexed} chunks from ${data.totalDocuments} documents!`);
+              }
+              setCurrentStep(data.message);
+            } else if (data.step === 'complete') {
+              setCurrentStep("");
+              setProgress("");
+              await checkPineconeStatus();
+              setTimeout(() => router.push("/"), 2000);
+            } else if (data.step === 'error') {
+              throw new Error(data.message);
+            }
+          }
+        }
+      }
     } catch (err) {
+      setIndexingSteps(prev => prev.map(step => 
+        step.status === 'processing' ? { ...step, status: 'error' as const, detail: '✗ Failed' } : step
+      ));
       setError(err instanceof Error ? err.message : "Failed to clear and index");
       setProgress("");
+      setCurrentStep("");
     } finally {
       setIsUploading(false);
+      if (!error) {
+        setTimeout(() => setIndexingSteps([]), 3000);
+      }
     }
   };
 
@@ -112,6 +264,7 @@ export default function UploadPage() {
     e.preventDefault();
     setStatus(null);
     setError(null);
+    setIndexingSteps([]);
 
     if (!files || files.length === 0) {
       setError("Please select at least one file to upload.");
@@ -124,12 +277,52 @@ export default function UploadPage() {
     });
 
     setIsUploading(true);
+    
+    // Set up progress for manual upload
+    const uploadSteps = [
+      { step: `Reading ${files.length} file(s)`, status: 'processing' as const, detail: "" },
+      { step: "Processing text content", status: 'pending' as const, detail: "" },
+      { step: "Generating embeddings", status: 'pending' as const, detail: "" },
+      { step: "Uploading to Pinecone", status: 'pending' as const, detail: "" }
+    ];
+    setIndexingSteps(uploadSteps);
+    setCurrentStep(`Uploading ${files.length} file(s)...`);
 
     try {
+      // Update step 1
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setIndexingSteps(prev => {
+        const newSteps = [...prev];
+        newSteps[0] = { ...newSteps[0], status: 'completed', detail: `✓ Read ${files.length} file(s)` };
+        newSteps[1] = { ...newSteps[1], status: 'processing' };
+        return newSteps;
+      });
+      setCurrentStep("Processing text content...");
+
       const res = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });
+
+      // Update step 2
+      setIndexingSteps(prev => {
+        const newSteps = [...prev];
+        newSteps[1] = { ...newSteps[1], status: 'completed', detail: "✓ Processed" };
+        newSteps[2] = { ...newSteps[2], status: 'processing' };
+        return newSteps;
+      });
+      setCurrentStep("Generating embeddings...");
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Update step 3
+      setIndexingSteps(prev => {
+        const newSteps = [...prev];
+        newSteps[2] = { ...newSteps[2], status: 'completed', detail: "✓ Generated" };
+        newSteps[3] = { ...newSteps[3], status: 'processing' };
+        return newSteps;
+      });
+      setCurrentStep("Uploading to Pinecone...");
 
       const data = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
@@ -142,15 +335,35 @@ export default function UploadPage() {
         throw new Error(data.error || "Upload failed.");
       }
 
+      // Update step 4
+      setIndexingSteps(prev => {
+        const newSteps = [...prev];
+        newSteps[3] = { ...newSteps[3], status: 'completed', detail: `✓ Uploaded ${data.uploadedChunks} chunks` };
+        return newSteps;
+      });
+
       setStatus(
-        `Uploaded ${data.uploadedChunks ?? 0} chunks from ${data.fileCount ?? files.length} file(s) into Pinecone index.`,
+        `Successfully uploaded ${data.uploadedChunks ?? 0} chunks from ${data.fileCount ?? files.length} file(s) into Pinecone index.`,
       );
+      setCurrentStep("");
     } catch (err: unknown) {
       console.error(err);
+      // Mark current processing step as error
+      setIndexingSteps(prev => prev.map(step => 
+        step.status === 'processing' ? { ...step, status: 'error' as const, detail: '✗ Failed' } : step
+      ));
       const message = err instanceof Error ? err.message : "Unexpected error during upload.";
       setError(message);
+      setCurrentStep("");
     } finally {
       setIsUploading(false);
+      // Clear steps after success
+      if (!error) {
+        setTimeout(() => {
+          setIndexingSteps([]);
+          setFiles(null);
+        }, 3000);
+      }
     }
   }
 
@@ -267,17 +480,61 @@ export default function UploadPage() {
                       className={`w-full rounded-2xl py-3 px-6 text-sm font-semibold transition-all ${
                         isUploading 
                           ? 'bg-slate-700 text-slate-400 cursor-not-allowed' 
-                          : 'bg-slate-800/80 text-rose-400 ring-1 ring-rose-500/50 hover:bg-rose-900/30'
+                          : 'bg-slate-800/80 text-amber-400 ring-1 ring-amber-500/50 hover:bg-amber-900/30'
                       }`}
                     >
-                      {isUploading ? 'Re-indexing in progress...' : '🔄 Clear and Re-index Database'}
+                      {isUploading ? 'Re-indexing in progress...' : '🔄 Re-index Database from Dataset'}
                     </button>
                   </>
                 )}
               </div>
 
               {/* Progress/Status Display */}
-              {progress && (
+              {indexingSteps.length > 0 && isUploading && (
+                <div className="rounded-2xl bg-slate-800/50 p-5 ring-1 ring-slate-700/50">
+                  <h3 className="text-sm font-semibold text-slate-200 mb-4">📊 Indexing Progress</h3>
+                  <div className="space-y-3">
+                    {indexingSteps.map((step, index) => (
+                      <div key={index} className="flex items-start gap-3">
+                        <div className="mt-0.5">
+                          {step.status === 'completed' && (
+                            <span className="text-emerald-400">✅</span>
+                          )}
+                          {step.status === 'processing' && (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
+                          )}
+                          {step.status === 'pending' && (
+                            <span className="text-slate-500">⏳</span>
+                          )}
+                          {step.status === 'error' && (
+                            <span className="text-rose-400">❌</span>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className={`text-sm ${
+                            step.status === 'completed' ? 'text-emerald-300' :
+                            step.status === 'processing' ? 'text-blue-300' :
+                            step.status === 'error' ? 'text-rose-300' :
+                            'text-slate-400'
+                          }`}>
+                            {step.step}
+                          </p>
+                          {step.detail && (
+                            <p className="text-xs text-slate-500 mt-0.5">{step.detail}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {currentStep && (
+                    <div className="mt-4 pt-4 border-t border-slate-700">
+                      <p className="text-xs text-slate-400 animate-pulse">{currentStep}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {progress && !indexingSteps.length && (
                 <div className="rounded-2xl bg-slate-800/50 p-4 ring-1 ring-slate-700/50">
                   <div className="flex items-center gap-3">
                     {isUploading && (

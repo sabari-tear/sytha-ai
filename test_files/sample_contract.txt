@@ -1,0 +1,93 @@
+EMPLOYMENT CONTRACT
+
+This Employment Contract is made and entered into on December 27, 2025, by and between:
+
+EMPLOYER: Tech Solutions Private Limited
+Address: 123 Business Park, Mumbai, Maharashtra, India
+(hereinafter referred to as "Employer")
+
+AND
+
+EMPLOYEE: Rahul Sharma
+Address: 456 Residential Complex, Mumbai, Maharashtra, India
+(hereinafter referred to as "Employee")
+
+RECITALS:
+The Employer desires to employ the Employee, and the Employee desires to accept such employment under the terms and conditions set forth in this Contract.
+
+1. POSITION AND DUTIES
+1.1 The Employee is hired as Senior Software Engineer.
+1.2 The Employee shall perform all duties assigned by the Employer including software development, code review, and team collaboration.
+1.3 The Employee shall devote their full professional time and attention to the performance of their duties.
+
+2. COMPENSATION
+2.1 Base Salary: The Employer shall pay the Employee an annual salary of ₹1,200,000 (Rupees Twelve Lakhs only), payable in monthly installments of ₹100,000.
+2.2 Bonus: The Employee may be eligible for an annual performance bonus of up to 20% of base salary.
+2.3 Benefits: The Employee shall be entitled to health insurance, provident fund contributions, and other benefits as per company policy.
+
+3. TERM OF EMPLOYMENT
+3.1 This Contract shall commence on January 1, 2026.
+3.2 The employment is at-will and may be terminated by either party with 60 days written notice.
+3.3 During probation (first 6 months), the notice period shall be 30 days.
+
+4. WORKING HOURS
+4.1 Normal working hours: 9:00 AM to 6:00 PM, Monday through Friday.
+4.2 The Employee may be required to work additional hours as needed.
+4.3 Flexible work arrangements may be provided at the Employer's discretion.
+
+5. LEAVE ENTITLEMENT
+5.1 Annual Leave: 24 days per year
+5.2 Sick Leave: 12 days per year
+5.3 Casual Leave: 8 days per year
+5.4 Earned leave can be carried forward to the next year subject to company policy.
+
+6. CONFIDENTIALITY AND NON-DISCLOSURE
+6.1 The Employee agrees to maintain confidentiality of all proprietary information.
+6.2 This obligation continues even after termination of employment.
+6.3 The Employee shall not disclose any trade secrets or confidential business information.
+
+7. INTELLECTUAL PROPERTY
+7.1 All work product created during employment shall be the exclusive property of the Employer.
+7.2 The Employee assigns all rights, title, and interest in any inventions or creations to the Employer.
+
+8. NON-COMPETE CLAUSE
+8.1 During employment and for 12 months thereafter, the Employee shall not:
+   - Work for direct competitors
+   - Solicit Employer's clients
+   - Start competing business
+8.2 This clause is limited to the geographical area of Mumbai and Pune.
+
+9. TERMINATION
+9.1 Termination for Cause: The Employer may terminate immediately for misconduct, breach of contract, or poor performance.
+9.2 Termination without Cause: Either party may terminate with 60 days notice.
+9.3 Upon termination, the Employee must return all company property.
+
+10. DISPUTE RESOLUTION
+10.1 Any disputes shall first be attempted to be resolved through mediation.
+10.2 If mediation fails, disputes shall be resolved through arbitration in Mumbai.
+10.3 The arbitration shall be conducted under the Arbitration and Conciliation Act, 1996.
+
+11. GOVERNING LAW
+This Contract shall be governed by the laws of India and subject to the jurisdiction of Mumbai courts.
+
+12. ENTIRE AGREEMENT
+This Contract constitutes the entire agreement between the parties and supersedes all prior agreements, whether oral or written.
+
+IN WITNESS WHEREOF, the parties have executed this Employment Contract:
+
+_______________________          _______________________
+For Tech Solutions Pvt Ltd       Rahul Sharma (Employee)
+Authorized Signatory            
+
+Date: December 27, 2025          Date: December 27, 2025
+
+Key Terms Summary:
+- Position: Senior Software Engineer
+- Annual Salary: ₹12,00,000
+- Start Date: January 1, 2026
+- Notice Period: 60 days (30 days during probation)
+- Annual Leave: 24 days
+- Non-compete: 12 months
+- Location: Mumbai, India
+
+This is a sample employment contract for testing purposes only.

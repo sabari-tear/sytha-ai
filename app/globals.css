@@ -3,42 +3,118 @@
 @tailwind utilities;
 
 :root {
-  --background: #020617;
-  --foreground: #e5e7eb;
+  --background: #0a0e1a;
+  --foreground: #e2e8f0;
+  --card-bg: #131722;
+  --border: #1e293b;
+  --accent-primary: #6366f1;
+  --accent-secondary: #8b5cf6;
 }
 
 body {
-  @apply bg-slate-950 text-slate-100 antialiased;
+  @apply bg-[#0a0e1a] text-slate-100 antialiased;
+  background: linear-gradient(135deg, #0a0e1a 0%, #0f1419 50%, #0a0e1a 100%);
+  background-attachment: fixed;
 }
 
+/* Glassmorphism effect */
+.glass {
+  background: rgba(19, 23, 34, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-light {
+  background: rgba(30, 41, 59, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Smooth transitions */
+* {
+  @apply transition-colors duration-300;
+}
+
+/* Fluid animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.3); }
+  50% { box-shadow: 0 0 30px rgba(99, 102, 241, 0.5); }
+}
+
+@keyframes slideInUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+.animate-slide-up {
+  animation: slideInUp 0.5s ease-out;
+}
+
+/* Custom scrollbar styling */
 .chat-scroll {
   scroll-behavior: smooth;
 }
 
-.chat-scroll {
-  scroll-behavior: smooth;
-}
-
-/* Custom scrollbar styling for chat panel (WebKit-based browsers, including Edge/Chrome) */
 .chat-scroll::-webkit-scrollbar {
   width: 8px;
 }
 
 .chat-scroll::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(30, 41, 59, 0.3);
+  border-radius: 8px;
 }
 
 .chat-scroll::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #4f46e5, #22c55e);
-  border-radius: 9999px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border-radius: 8px;
+  transition: all 0.3s ease;
 }
 
 .chat-scroll::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #6366f1, #4ade80);
+  background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
 }
 
 /* Firefox */
 .chat-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #4f46e5 transparent;
+  scrollbar-color: #6366f1 rgba(30, 41, 59, 0.3);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Card hover effects */
+.card-hover {
+  @apply transition-all duration-300;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(99, 102, 241, 0.2);
 }

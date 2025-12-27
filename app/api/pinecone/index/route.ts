@@ -70,10 +70,11 @@ async function loadAllDocuments(): Promise<LegalSection[]> {
     }
   }
   
-  // Load JSON files (limited to avoid timeout)
+  // Load all JSON files from dataset
   const jsonFiles = fs.readdirSync(datasetPath)
-    .filter(f => f.endsWith(".json"))
-    .slice(0, 100); // Limit to first 100 JSON files for demo
+    .filter(f => f.endsWith(".json"));
+  
+  indexLogger.info(`Found ${jsonFiles.length} JSON files to process`);
   
   for (const file of jsonFiles) {
     try {
@@ -81,19 +82,55 @@ async function loadAllDocuments(): Promise<LegalSection[]> {
       const content = fs.readFileSync(filePath, "utf-8");
       const data = JSON.parse(content);
       
-      const statuteId = file.replace(".json", "");
-      const statute: LegalSection = {
-        id: `statute_${statuteId}`,
-        act: data.act || "Statute",
-        section: statuteId,
-        title: data.title || data.name || `Statute ${statuteId}`,
-        description: data.description || "",
-        text: data.text || data.content || JSON.stringify(data).substring(0, 1000),
-      };
+      const actId = file.replace(".json", "");
+      const actTitle = data["Act Title"] || data.act || `Act ${actId}`;
+      const actDef = data["Act Definition"];
       
-      allSections.push(statute);
+      // Create main act document
+      let actDescription = "";
+      if (actDef && typeof actDef === "object") {
+        actDescription = Object.values(actDef).join(" ");
+      } else if (typeof actDef === "string") {
+        actDescription = actDef;
+      }
+      
+      const mainDoc: LegalSection = {
+        id: `act_${actId}`,
+        act: actTitle,
+        section: "Overview",
+        title: actTitle,
+        description: actDescription,
+        text: `${data["Act ID"] || ""}\n${data["Enactment Date"] || ""}\n${actDescription}`,
+      };
+      allSections.push(mainDoc);
+      
+      // Process all sections
+      if (data.Sections && typeof data.Sections === "object") {
+        for (const [sectionKey, sectionData] of Object.entries(data.Sections)) {
+          if (sectionData && typeof sectionData === "object") {
+            const heading = (sectionData as any).heading || "";
+            const paragraphs = (sectionData as any).paragraphs || {};
+            
+            let sectionText = "";
+            if (typeof paragraphs === "object") {
+              sectionText = Object.values(paragraphs).join("\n\n");
+            }
+            
+            const section: LegalSection = {
+              id: `act_${actId}_${sectionKey.replace(/[^a-zA-Z0-9]/g, "_")}`,
+              act: actTitle,
+              section: sectionKey,
+              title: heading,
+              description: heading,
+              text: sectionText,
+            };
+            allSections.push(section);
+          }
+        }
+      }
+      
     } catch (error) {
-      // Skip invalid JSON files
+      indexLogger.warn(`Failed to parse JSON file: ${file}`, { error: String(error) });
     }
   }
   
@@ -163,106 +200,160 @@ async function chunkAndPrepareDocuments(sections: LegalSection[], chunkSize: num
 }
 
 export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const clearExisting = body.clearExisting || false;
-    
-    indexLogger.info("Starting document indexing", { clearExisting });
-    
-    // Validate environment
-    const validation = validateEnvironment();
-    if (!validation.valid) {
-      return NextResponse.json({
-        success: false,
-        message: "Environment configuration is invalid",
-        errors: validation.errors
-      }, { status: 400 });
-    }
-    
-    // Clear existing vectors if requested
-    if (clearExisting) {
-      indexLogger.info("Clearing existing vectors");
-      await deleteAllVectors();
-    }
-    
-    // Load documents
-    indexLogger.info("Loading legal documents");
-    const documents = await loadAllDocuments();
-    
-    if (documents.length === 0) {
-      return NextResponse.json({
-        success: false,
-        message: "No documents found to index"
-      }, { status: 400 });
-    }
-    
-    // Chunk documents
-    indexLogger.info(`Chunking ${documents.length} documents`);
-    const chunks = await chunkAndPrepareDocuments(documents);
-    
-    // Index to Pinecone
-    const index = getPineconeIndex();
-    const batchSize = 50;
-    let totalIndexed = 0;
-    
-    indexLogger.info(`Starting to index ${chunks.length} chunks`);
-    
-    for (let i = 0; i < chunks.length; i += batchSize) {
-      const batch = chunks.slice(i, i + batchSize);
-      const texts = batch.map(chunk => chunk.text);
+  const encoder = new TextEncoder();
+  const body = await request.json();
+  const clearExisting = body.clearExisting || false;
+  
+  const stream = new ReadableStream({
+    async start(controller) {
+      const sendMessage = (data: any) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+      };
       
       try {
-        // Generate embeddings
-        const embeddings = await embedTexts(texts);
+        indexLogger.info("Starting document indexing", { clearExisting });
         
-        // Prepare vectors
-        const vectors = batch.map((chunk, idx) => ({
-          id: chunk.id,
-          values: embeddings[idx],
-          metadata: {
-            ...chunk.metadata,
-            text: chunk.text.substring(0, 1000), // Limit text in metadata
-          },
-        }));
+        // Validate environment
+        sendMessage({ step: "validate", status: "processing", message: "Validating environment..." });
+        const validation = validateEnvironment();
+        if (!validation.valid) {
+          sendMessage({ step: "validate", status: "error", message: "Environment configuration is invalid", errors: validation.errors });
+          controller.close();
+          return;
+        }
+        sendMessage({ step: "validate", status: "completed", message: "Environment validated" });
         
-        // Upsert to Pinecone
-        await index.upsert(vectors);
-        totalIndexed += batch.length;
+        // Clear existing vectors if requested
+        if (clearExisting) {
+          sendMessage({ step: "clear", status: "processing", message: "Preparing to re-index (existing vectors will be replaced)..." });
+          indexLogger.info("Preparing for re-indexing");
+          try {
+            await deleteAllVectors();
+            sendMessage({ step: "clear", status: "completed", message: "Ready to re-index - vectors will be overwritten" });
+          } catch (clearError) {
+            // Don't fail if deletion doesn't work - we can still overwrite
+            const errorMsg = clearError instanceof Error ? clearError.message : String(clearError);
+            indexLogger.warn("Deletion not supported, will overwrite vectors instead", { error: errorMsg });
+            sendMessage({ step: "clear", status: "completed", message: "Ready to re-index - vectors will be overwritten" });
+          }
+        }
         
-        indexLogger.info(`Indexed ${totalIndexed}/${chunks.length} chunks`);
+        // Load documents
+        sendMessage({ step: "load", status: "processing", message: "Loading legal documents from dataset folder..." });
+        indexLogger.info("Loading legal documents");
+        const documents = await loadAllDocuments();
         
-        // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
+        if (documents.length === 0) {
+          sendMessage({ step: "load", status: "error", message: "No documents found to index" });
+          controller.close();
+          return;
+        }
+        sendMessage({ step: "load", status: "completed", message: `Loaded ${documents.length} documents` });
+        
+        // Chunk documents
+        sendMessage({ step: "chunk", status: "processing", message: `Chunking ${documents.length} documents...` });
+        indexLogger.info(`Chunking ${documents.length} documents`);
+        const chunks = await chunkAndPrepareDocuments(documents);
+        sendMessage({ step: "chunk", status: "completed", message: `Created ${chunks.length} chunks` });
+        
+        // Index to Pinecone
+        const index = getPineconeIndex();
+        const batchSize = 50;
+        let totalIndexed = 0;
+        
+        sendMessage({ step: "index", status: "processing", message: `Starting to index ${chunks.length} chunks...`, progress: 0, total: chunks.length });
+        indexLogger.info(`Starting to index ${chunks.length} chunks`);
+        
+        for (let i = 0; i < chunks.length; i += batchSize) {
+          const batch = chunks.slice(i, i + batchSize);
+          const texts = batch.map(chunk => chunk.text);
+          
+          try {
+            // Generate embeddings
+            const embeddings = await embedTexts(texts);
+            
+            // Prepare vectors
+            const vectors = batch.map((chunk, idx) => ({
+              id: chunk.id,
+              values: embeddings[idx],
+              metadata: {
+                ...chunk.metadata,
+                text: chunk.text.substring(0, 1000),
+              },
+            }));
+            
+            // Upsert to Pinecone
+            await index.upsert(vectors);
+            totalIndexed += batch.length;
+            
+            const progress = Math.round((totalIndexed / chunks.length) * 100);
+            sendMessage({ 
+              step: "index", 
+              status: "processing", 
+              message: `Indexed ${totalIndexed}/${chunks.length} chunks`, 
+              progress: totalIndexed,
+              total: chunks.length,
+              percent: progress
+            });
+            
+            indexLogger.info(`Indexed ${totalIndexed}/${chunks.length} chunks`);
+            
+            // Small delay to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 100));
+          } catch (error) {
+            indexLogger.error(`Failed to index batch starting at ${i}`, { error: String(error) });
+            sendMessage({ 
+              step: "index", 
+              status: "warning", 
+              message: `Warning: Failed to index batch at ${i}`, 
+              progress: totalIndexed,
+              total: chunks.length 
+            });
+          }
+        }
+        
+        sendMessage({ step: "index", status: "completed", message: `Successfully indexed ${totalIndexed} chunks` });
+        
+        // Get final stats
+        sendMessage({ step: "verify", status: "processing", message: "Verifying index..." });
+        const stats = await index.describeIndexStats();
+        
+        indexLogger.info("Indexing completed", {
+          totalDocuments: documents.length,
+          totalChunks: chunks.length,
+          totalIndexed,
+          vectorCount: stats.totalRecordCount
+        });
+        
+        sendMessage({ 
+          step: "verify", 
+          status: "completed", 
+          message: "Indexing completed successfully",
+          totalDocuments: documents.length,
+          totalIndexed,
+          vectorCount: stats.totalRecordCount
+        });
+        
+        sendMessage({ step: "complete", status: "success", message: "All done!" });
+        
       } catch (error) {
-        indexLogger.error(`Failed to index batch starting at ${i}`, { error: String(error) });
+        indexLogger.error("Indexing failed", { error: String(error) });
+        sendMessage({ 
+          step: "error", 
+          status: "error", 
+          message: error instanceof Error ? error.message : "Unknown error"
+        });
+      } finally {
+        controller.close();
       }
     }
-    
-    // Get final stats
-    const stats = await index.describeIndexStats();
-    
-    indexLogger.info("Indexing completed", {
-      totalDocuments: documents.length,
-      totalChunks: chunks.length,
-      totalIndexed,
-      vectorCount: stats.totalRecordCount
-    });
-    
-    return NextResponse.json({
-      success: true,
-      message: "Indexing completed successfully",
-      totalDocuments: documents.length,
-      totalChunks: chunks.length,
-      totalIndexed,
-      vectorCount: stats.totalRecordCount
-    }, { status: 200 });
-    
-  } catch (error) {
-    indexLogger.error("Indexing failed", { error: String(error) });
-    return NextResponse.json({
-      success: false,
-      message: "Indexing failed",
-      error: error instanceof Error ? error.message : "Unknown error"
-    }, { status: 500 });
-  }
+  });
+  
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
 }
