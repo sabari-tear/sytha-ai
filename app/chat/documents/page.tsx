@@ -243,7 +243,7 @@ export default function DocumentsPage() {
           <div className="bg-white rounded-lg p-6 mb-6 text-left">
             <h3 className="font-semibold text-gray-800 mb-3">To fix this:</h3>
             <ol className="list-decimal list-inside space-y-2 text-gray-700">
-              <li>Click the <strong>"Sign Out"</strong> button in the sidebar</li>
+              <li>Click the <strong>{'“Sign Out”'}</strong> button in the sidebar</li>
               <li>Sign in again with your Google account</li>
               <li>Come back to this page</li>
             </ol>
