@@ -31,12 +31,12 @@ async function ensureInitialized() {
       );
       
       if (criticalErrors.length > 0) {
-        apiLogger.error("Critical environment validation failed", undefined, {
+        apiLogger.error("Critical environment validation failed", {
           errors: criticalErrors
         });
         throw new Error("Critical environment configuration is invalid");
       } else {
-        apiLogger.warn("Non-critical environment warnings", undefined, {
+        apiLogger.warn("Non-critical environment warnings", {
           warnings: envValidation.errors
         });
       }

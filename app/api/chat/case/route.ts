@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateAnswer } from '@/lib/gemini';
 import { embedTexts } from '@/lib/embeddings';
 import { getPineconeClient } from '@/lib/pinecone';
-import { getUserDocuments } from '../../documents/process/route';
+import { getUserDocuments } from '@/lib/documentStore';
+
 
 export async function POST(request: NextRequest) {
   try {
